@@ -12,6 +12,7 @@ import {
   PermissionFlagsBits
 } from "discord.js";
 
+// Catch errors so bot doesn’t crash
 process.on("uncaughtException", console.error);
 process.on("unhandledRejection", console.error);
 
@@ -22,25 +23,21 @@ console.log("🚀 Bot starting...");
 // =====================================================
 const app = express();
 
-app.get("/", (req, res) => {
-  res.send("✅ Bot is running");
-});
+app.get("/", (req, res) => res.send("✅ Bot is running"));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("🌐 Web server running on", PORT));
+app.listen(PORT, () => console.log("🌐 Web server running on port", PORT));
 
 // =====================================================
 // DISCORD CLIENT
 // =====================================================
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
-});
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 // =====================================================
 // SLASH COMMANDS
 // =====================================================
 const commands = [
-  new SlashCommandBuilder().setName("ping").setDescription("Ping bot"),
+  new SlashCommandBuilder().setName("ping").setDescription("Ping the bot"),
   new SlashCommandBuilder().setName("website").setDescription("Show website"),
   new SlashCommandBuilder()
     .setName("announce")
@@ -75,28 +72,26 @@ client.once("ready", () => {
 });
 
 // =====================================================
-// INTERACTION HANDLER (SAFE & PRODUCTION READY)
+// INTERACTION HANDLER (FAST & SAFE)
 // =====================================================
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
   try {
-    // -------------------
+    // -----------------------
     // /ping
-    // -------------------
+    // -----------------------
     if (interaction.commandName === "ping") {
       return interaction.reply("🏓 Pong!");
     }
 
-    // -------------------
+    // -----------------------
     // /website
-    // -------------------
+    // -----------------------
     if (interaction.commandName === "website") {
-      await interaction.deferReply(); // prevents Discord timeout
-
       const url = process.env.WEBSITE_URL || "No website set";
 
-      return interaction.editReply({
+      return interaction.reply({
         embeds: [
           new EmbedBuilder()
             .setTitle("🌐 Website")
@@ -106,20 +101,20 @@ client.on("interactionCreate", async interaction => {
       });
     }
 
-    // -------------------
+    // -----------------------
     // /announce
-    // -------------------
+    // -----------------------
     if (interaction.commandName === "announce") {
-      await interaction.deferReply();
-
       const msg = interaction.options.getString("message");
 
-      // check admin permission
       if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
-        return interaction.editReply("❌ You need Administrator permission to run this command.");
+        return interaction.reply({
+          content: "❌ You need Administrator permission.",
+          ephemeral: true
+        });
       }
 
-      return interaction.editReply({
+      return interaction.reply({
         embeds: [
           new EmbedBuilder()
             .setTitle("📢 Announcement")
@@ -132,11 +127,11 @@ client.on("interactionCreate", async interaction => {
 
   } catch (err) {
     console.log("⚠️ Interaction error:", err);
-
-    if (interaction.deferred || interaction.replied) {
-      return interaction.editReply("⚠️ Something went wrong while executing this command.");
-    } else {
-      return interaction.reply("⚠️ Something went wrong while executing this command.");
+    if (!interaction.replied) {
+      return interaction.reply({
+        content: "⚠️ Something went wrong.",
+        ephemeral: true
+      });
     }
   }
 });
