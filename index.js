@@ -69,7 +69,7 @@ new SlashCommandBuilder()
       .setName("message")
       .setDescription("The message to send in the announcement")
       .setRequired(true)
-  )
+  ),
 
 
 // =====================================================
