@@ -104,39 +104,59 @@ client.once("ready", () => {
 
 
 // =====================================================
-// COMMAND HANDLER
+// COMMAND HANDLER (FIXED SAFE VERSION)
 // =====================================================
 
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  // /ping
-  if (interaction.commandName === "ping") {
-    return interaction.reply("🏓 Pong!");
-  }
+  try {
 
-  // /website
-  if (interaction.commandName === "website") {
-    const embed = new EmbedBuilder()
-      .setTitle("🌐 My Website")
-      .setDescription(process.env.WEBSITE_URL)
-      .setColor("#5865F2")
-      .setFooter({ text: "Powered by Discord Bot" });
+    // =====================================================
+    // /ping
+    // =====================================================
+    if (interaction.commandName === "ping") {
+      return interaction.reply("🏓 Pong!");
+    }
 
-    return interaction.reply({ embeds: [embed] });
-  }
+    // =====================================================
+    // /website
+    // =====================================================
+    if (interaction.commandName === "website") {
+      const embed = new EmbedBuilder()
+        .setTitle("🌐 My Website")
+        .setDescription(process.env.WEBSITE_URL)
+        .setColor("#5865F2")
+        .setFooter({ text: "Powered by Discord Bot" });
 
-  // /announce
-  if (interaction.commandName === "announce") {
-    const msg = interaction.options.getString("message");
+      return interaction.reply({ embeds: [embed] });
+    }
 
-    const embed = new EmbedBuilder()
-      .setTitle("📢 Announcement")
-      .setDescription(msg)
-      .setColor("Green")
-      .setTimestamp();
+    // =====================================================
+    // /announce
+    // =====================================================
+    if (interaction.commandName === "announce") {
+      const msg = interaction.options.getString("message");
 
-    return interaction.reply({ embeds: [embed] });
+      const embed = new EmbedBuilder()
+        .setTitle("📢 Announcement")
+        .setDescription(msg)
+        .setColor("Green")
+        .setTimestamp();
+
+      return interaction.reply({ embeds: [embed] });
+    }
+
+  } catch (err) {
+    console.log("Interaction error:", err);
+
+    // ALWAYS respond (prevents "application did not respond")
+    if (interaction.deferred || interaction.replied) return;
+
+    return interaction.reply({
+      content: "⚠️ Something went wrong while running this command.",
+      ephemeral: true
+    });
   }
 });
 
