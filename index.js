@@ -19,7 +19,7 @@ console.log("🚀 Bot starting...");
 
 
 // =====================================================
-// EXPRESS (KEEP ALIVE DASHBOARD)
+// EXPRESS SERVER
 // =====================================================
 
 const app = express();
@@ -29,6 +29,7 @@ app.get("/", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
   console.log("🌐 Web server running on", PORT);
 });
@@ -65,7 +66,6 @@ const commands = [
         .setDescription("Message to send")
         .setRequired(true)
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 ].map(c => c.toJSON());
 
 
@@ -95,7 +95,7 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
 
 // =====================================================
-// READY
+// READY EVENT
 // =====================================================
 
 client.once("ready", () => {
@@ -104,7 +104,7 @@ client.once("ready", () => {
 
 
 // =====================================================
-// COMMAND HANDLER (FIXED SAFE VERSION)
+// COMMAND HANDLER (FIXED + SAFE)
 // =====================================================
 
 client.on("interactionCreate", async (interaction) => {
@@ -112,51 +112,64 @@ client.on("interactionCreate", async (interaction) => {
 
   try {
 
-    // =====================================================
+    // ======================
     // /ping
-    // =====================================================
+    // ======================
     if (interaction.commandName === "ping") {
       return interaction.reply("🏓 Pong!");
     }
 
-    // =====================================================
+    // ======================
     // /website
-    // =====================================================
+    // ======================
     if (interaction.commandName === "website") {
-      const embed = new EmbedBuilder()
-        .setTitle("🌐 My Website")
-        .setDescription(process.env.WEBSITE_URL)
-        .setColor("#5865F2")
-        .setFooter({ text: "Powered by Discord Bot" });
+      const url = process.env.WEBSITE_URL || "No website set";
 
-      return interaction.reply({ embeds: [embed] });
+      return interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle("🌐 Website")
+            .setDescription(url)
+            .setColor("#5865F2")
+        ]
+      });
     }
 
-    // =====================================================
+    // ======================
     // /announce
-    // =====================================================
+    // ======================
     if (interaction.commandName === "announce") {
+
       const msg = interaction.options.getString("message");
 
-      const embed = new EmbedBuilder()
-        .setTitle("📢 Announcement")
-        .setDescription(msg)
-        .setColor("Green")
-        .setTimestamp();
+      // Permission check (safe)
+      if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+        return interaction.reply({
+          content: "❌ You need Administrator permission to use this command.",
+          ephemeral: true
+        });
+      }
 
-      return interaction.reply({ embeds: [embed] });
+      return interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle("📢 Announcement")
+            .setDescription(msg)
+            .setColor("Green")
+            .setTimestamp()
+        ]
+      });
     }
 
   } catch (err) {
     console.log("Interaction error:", err);
 
-    // ALWAYS respond (prevents "application did not respond")
-    if (interaction.deferred || interaction.replied) return;
-
-    return interaction.reply({
-      content: "⚠️ Something went wrong while running this command.",
-      ephemeral: true
-    });
+    if (!interaction.replied) {
+      return interaction.reply({
+        content: "⚠️ Something went wrong while executing this command.",
+        ephemeral: true
+      });
+    }
   }
 });
 
