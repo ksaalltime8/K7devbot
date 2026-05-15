@@ -7,12 +7,7 @@ import {
   GatewayIntentBits,
   REST,
   Routes,
-  SlashCommandBuilder,
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  PermissionFlagsBits
+  SlashCommandBuilder
 } from "discord.js";
 
 process.on("uncaughtException", console.error);
@@ -20,80 +15,109 @@ process.on("unhandledRejection", console.error);
 
 console.log("🚀 BOT STARTING...");
 
+
 // =====================================================
 // EXPRESS SERVER
 // =====================================================
+
 const app = express();
-app.get("/", (req, res) => res.send("✅ Bot is running"));
+
+app.get("/", (req, res) => {
+  res.send("✅ Bot is running");
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("🌐 Web server running"));
+
+app.listen(PORT, () => {
+  console.log("🌐 Web server running on", PORT);
+});
+
 
 // =====================================================
 // DISCORD CLIENT
 // =====================================================
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds]
+});
+
 
 // =====================================================
-// SLASH COMMANDS
+// SLASH COMMANDS (KEEP SIMPLE)
 // =====================================================
+
 const commands = [
-  new SlashCommandBuilder().setName("ping").setDescription("Check bot"),
-  new SlashCommandBuilder().setName("website").setDescription("Show website"),
+  new SlashCommandBuilder()
+    .setName("ping")
+    .setDescription("Check bot"),
+
+  new SlashCommandBuilder()
+    .setName("website")
+    .setDescription("Show website"),
+
   new SlashCommandBuilder()
     .setName("announce")
-    .setDescription("Send an announcement")
-    .addStringOption(opt =>
-      opt.setName("message")
-        .setDescription("Message to send")
-        .setRequired(true)
-    )
+    .setDescription("Test announce")
 ].map(c => c.toJSON());
 
+
 // =====================================================
-// REGISTER COMMANDS
+// REGISTER COMMANDS (FORCE REFRESH)
 // =====================================================
+
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
-(async () => {
+
+async function register() {
   try {
+    console.log("🚀 Registering commands...");
+
     const data = await rest.put(
-      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+      Routes.applicationGuildCommands(
+        process.env.CLIENT_ID,
+        process.env.GUILD_ID
+      ),
       { body: commands }
     );
+
     console.log("✅ Commands registered:", data.length);
   } catch (err) {
-    console.log("❌ Command registration error:", err);
+    console.log("❌ Command error:", err);
   }
-})();
+}
+
+register();
+
 
 // =====================================================
 // READY EVENT
 // =====================================================
-client.once("ready", () => console.log(`✅ Logged in as ${client.user.tag}`));
+
+client.once("ready", () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+});
+
 
 // =====================================================
-// INTERACTIONS HANDLER
+// INTERACTIONS (DEBUG SAFE)
 // =====================================================
+
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
+  console.log("👉 COMMAND RECEIVED:", interaction.commandName);
+
   try {
 
-    // -------------------------
-    // /ping
-    // -------------------------
     if (interaction.commandName === "ping") {
       return interaction.reply("🏓 Pong!");
     }
 
-    // -------------------------
-    // /website
-    // -------------------------
     if (interaction.commandName === "website") {
-      const url = process.env.WEBSITE_URL || "https://example.com";
+          const url = process.env.WEBSITE_URL || "https://k7devs.com";
 
       const embed = new EmbedBuilder()
-        .setTitle("🌐 My Website")
-        .setDescription(`Click the button below to visit the website!`)
+        .setTitle("🌐 Visit Our Website")
+        .setDescription(`Check out our site: ${url}`)
         .setColor("#5865F2")
         .setFooter({ text: "Powered by Discord Bot" });
 
@@ -107,19 +131,9 @@ client.on("interactionCreate", async (interaction) => {
       return interaction.reply({ embeds: [embed], components: [row] });
     }
 
-    // -------------------------
-    // /announce
-    // -------------------------
-    if (interaction.commandName === "announce") {
-      const msg = interaction.options.getString("message");
 
-      // check admin permissions
-      if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
-        return interaction.reply({
-          content: "❌ You need Administrator permission.",
-          ephemeral: true
-        });
-      }
+     if (interaction.commandName === "announce") {
+      const msg = interaction.options.getString("message") || "No message provided";
 
       const embed = new EmbedBuilder()
         .setTitle("📢 Announcement")
@@ -131,9 +145,7 @@ client.on("interactionCreate", async (interaction) => {
       return interaction.reply({ embeds: [embed] });
     }
 
-    // fallback
-    return interaction.reply({ content: "❓ Unknown command", ephemeral: true });
-
+    return interaction.reply("❓ Unknown command");
   } catch (err) {
     console.log("❌ Interaction error:", err);
     if (!interaction.replied) {
@@ -142,7 +154,9 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
+
 // =====================================================
 // LOGIN
 // =====================================================
+
 client.login(process.env.TOKEN);
