@@ -1,24 +1,7 @@
-// =====================================================
-// ADVANCED DISCORD DEV WEBSITE BOT
-// Features:
-// ✅ Slash Commands
-// ✅ Website Monitoring
-// ✅ Dashboard API
-// ✅ MongoDB Database
-// ✅ Express Backend
-// =====================================================
-
-
-
-// =====================================================
-// 1. INSTALL
-// =====================================================
-
-// npm init -y
-
-// npm install discord.js dotenv express mongoose axios
-
-
+process.on("uncaughtException", console.error);
+process.on("unhandledRejection", console.error);
+console.log("TOKEN OK:", !!process.env.TOKEN);
+console.log("MONGO OK:", !!process.env.MONGO_URI);
 
 PORT=3000
 
