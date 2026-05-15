@@ -1,7 +1,4 @@
-process.on("uncaughtException", console.error);
-process.on("unhandledRejection", console.error);
-console.log("TOKEN OK:", !!process.env.TOKEN);
-console.log("MONGO OK:", !!process.env.MONGO_URI);
+console.log("APP STARTING...");
 
 PORT=3000
 
