@@ -12,21 +12,19 @@ import {
   PermissionFlagsBits
 } from "discord.js";
 
-// Catch errors so bot doesn’t crash
 process.on("uncaughtException", console.error);
 process.on("unhandledRejection", console.error);
 
 console.log("🚀 Bot starting...");
 
 // =====================================================
-// EXPRESS SERVER (KEEP BOT ALIVE)
+// EXPRESS SERVER
 // =====================================================
 const app = express();
 
 app.get("/", (req, res) => res.send("✅ Bot is running"));
-
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("🌐 Web server running on port", PORT));
+app.listen(PORT, () => console.log("🌐 Web server running"));
 
 // =====================================================
 // DISCORD CLIENT
@@ -41,7 +39,7 @@ const commands = [
   new SlashCommandBuilder().setName("website").setDescription("Show website"),
   new SlashCommandBuilder()
     .setName("announce")
-    .setDescription("Send an announcement")
+    .setDescription("Send announcement")
     .addStringOption(opt =>
       opt.setName("message").setDescription("Message to send").setRequired(true)
     )
@@ -51,7 +49,6 @@ const commands = [
 // REGISTER COMMANDS
 // =====================================================
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
-
 (async () => {
   try {
     const data = await rest.put(
@@ -67,27 +64,21 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 // =====================================================
 // READY EVENT
 // =====================================================
-client.once("ready", () => {
-  console.log(`✅ Logged in as ${client.user.tag}`);
-});
+client.once("ready", () => console.log(`✅ Logged in as ${client.user.tag}`));
 
 // =====================================================
-// INTERACTION HANDLER (FAST & SAFE)
+// INTERACTION HANDLER (WORKING + SAFE)
 // =====================================================
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
   try {
-    // -----------------------
-    // /ping
-    // -----------------------
+    // /ping — fast, no defer needed
     if (interaction.commandName === "ping") {
       return interaction.reply("🏓 Pong!");
     }
 
-    // -----------------------
-    // /website
-    // -----------------------
+    // /website — fast, embed only
     if (interaction.commandName === "website") {
       const url = process.env.WEBSITE_URL || "No website set";
 
@@ -101,17 +92,12 @@ client.on("interactionCreate", async interaction => {
       });
     }
 
-    // -----------------------
-    // /announce
-    // -----------------------
+    // /announce — fast, embed only, admin-only
     if (interaction.commandName === "announce") {
       const msg = interaction.options.getString("message");
 
       if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
-        return interaction.reply({
-          content: "❌ You need Administrator permission.",
-          ephemeral: true
-        });
+        return interaction.reply({ content: "❌ You need Administrator permission.", ephemeral: true });
       }
 
       return interaction.reply({
@@ -127,11 +113,9 @@ client.on("interactionCreate", async interaction => {
 
   } catch (err) {
     console.log("⚠️ Interaction error:", err);
-    if (!interaction.replied) {
-      return interaction.reply({
-        content: "⚠️ Something went wrong.",
-        ephemeral: true
-      });
+
+    if (!interaction.replied && !interaction.deferred) {
+      return interaction.reply({ content: "⚠️ Something went wrong.", ephemeral: true });
     }
   }
 });
