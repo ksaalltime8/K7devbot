@@ -51,15 +51,15 @@ const client = new Client({
 const commands = [
   new SlashCommandBuilder()
     .setName("ping")
-    .setDescription("Check bot"),
+    .setDescription("Check bot latency"),
 
   new SlashCommandBuilder()
     .setName("website")
-    .setDescription("Show website"),
+    .setDescription("Show website link"),
 
   new SlashCommandBuilder()
     .setName("announce")
-    .setDescription("Send announcement embed")
+    .setDescription("Send announcement")
     .addStringOption(option =>
       option
         .setName("message")
@@ -104,7 +104,7 @@ client.once("ready", () => {
 
 
 // =====================================================
-// COMMAND HANDLER (FIXED + SAFE)
+// COMMAND HANDLER (100% SAFE)
 // =====================================================
 
 client.on("interactionCreate", async (interaction) => {
@@ -123,9 +123,11 @@ client.on("interactionCreate", async (interaction) => {
     // /website
     // ======================
     if (interaction.commandName === "website") {
+      await interaction.deferReply();
+
       const url = process.env.WEBSITE_URL || "No website set";
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [
           new EmbedBuilder()
             .setTitle("🌐 Website")
@@ -139,18 +141,15 @@ client.on("interactionCreate", async (interaction) => {
     // /announce
     // ======================
     if (interaction.commandName === "announce") {
+      await interaction.deferReply();
 
       const msg = interaction.options.getString("message");
 
-      // Permission check (safe)
       if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
-        return interaction.reply({
-          content: "❌ You need Administrator permission to use this command.",
-          ephemeral: true
-        });
+        return interaction.editReply("❌ You need Administrator permission.");
       }
 
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [
           new EmbedBuilder()
             .setTitle("📢 Announcement")
@@ -164,11 +163,10 @@ client.on("interactionCreate", async (interaction) => {
   } catch (err) {
     console.log("Interaction error:", err);
 
-    if (!interaction.replied) {
-      return interaction.reply({
-        content: "⚠️ Something went wrong while executing this command.",
-        ephemeral: true
-      });
+    if (interaction.deferred || interaction.replied) {
+      return interaction.editReply("⚠️ Something went wrong.");
+    } else {
+      return interaction.reply("⚠️ Something went wrong.");
     }
   }
 });
