@@ -3,6 +3,8 @@ dotenv.config();
 
 import express from "express";
 import axios from "axios";
+import mongoose from "mongoose";
+
 import {
   Client,
   GatewayIntentBits,
@@ -16,6 +18,40 @@ process.on("uncaughtException", console.error);
 process.on("unhandledRejection", console.error);
 
 console.log("🚀 BOT STARTING...");
+
+
+// =====================================================
+// MONGODB (SAFE NON-BLOCKING)
+// =====================================================
+
+let dbConnected = false;
+
+async function connectDB() {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 10
+    });
+
+    dbConnected = true;
+    console.log("✅ MongoDB Connected");
+  } catch (err) {
+    dbConnected = false;
+    console.log("❌ MongoDB failed (bot still runs):", err.message);
+  }
+}
+
+connectDB();
+
+
+// Simple monitoring schema
+const monitorSchema = new mongoose.Schema({
+  status: String,
+  checkedAt: Date
+});
+
+const Monitor = mongoose.models.Monitor ||
+  mongoose.model("Monitor", monitorSchema);
 
 
 // =====================================================
@@ -34,6 +70,7 @@ app.get("/", (req, res) => {
 app.get("/status", (req, res) => {
   res.json({
     status: "online",
+    db: dbConnected,
     bot: client?.user?.tag || "starting"
   });
 });
@@ -125,10 +162,26 @@ client.on("interactionCreate", async (interaction) => {
   if (interaction.commandName === "status") {
     try {
       const res = await axios.get(process.env.WEBSITE_URL);
+
+      // OPTIONAL DB LOG (SAFE)
+      if (dbConnected) {
+        await Monitor.create({
+          status: res.status === 200 ? "ONLINE" : "ISSUE",
+          checkedAt: new Date()
+        });
+      }
+
       return interaction.reply(
         res.status === 200 ? "🟢 Website Online" : "🟠 Issue"
       );
     } catch {
+      if (dbConnected) {
+        await Monitor.create({
+          status: "OFFLINE",
+          checkedAt: new Date()
+        });
+      }
+
       return interaction.reply("🔴 Website Offline");
     }
   }
