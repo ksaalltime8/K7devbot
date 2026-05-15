@@ -1,12 +1,4 @@
-console.log("APP STARTING...");
-
-PORT=3000
-
-
-
-// =====================================================
-// 4. index.js
-// =====================================================
+console.log("🚀 APP STARTING...");
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -24,6 +16,8 @@ import {
   EmbedBuilder
 } from "discord.js";
 
+process.on("uncaughtException", console.error);
+process.on("unhandledRejection", console.error);
 
 
 // =====================================================
@@ -31,21 +25,21 @@ import {
 // =====================================================
 
 const app = express();
-
 app.use(express.json());
+
+const PORT = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
   res.send("✅ Dashboard API Running");
 });
 
-app.listen(process.env.PORT, () => {
-  console.log(`🌐 Dashboard running on port ${process.env.PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🌐 Server running on port ${PORT}`);
 });
 
 
-
 // =====================================================
-// MONGODB
+// MONGODB (SAFE)
 // =====================================================
 
 async function connectDB() {
@@ -56,28 +50,11 @@ async function connectDB() {
 
     console.log("✅ MongoDB Connected");
   } catch (err) {
-    console.log("❌ MongoDB failed:", err.message);
+    console.log("❌ MongoDB Error:", err.message);
   }
 }
 
 connectDB();
-
-
-
-// =====================================================
-// DATABASE MODEL
-// =====================================================
-
-const monitorSchema = new mongoose.Schema({
-  status: String,
-  checkedAt: Date
-});
-
-const Monitor = mongoose.model(
-  "Monitor",
-  monitorSchema
-);
-
 
 
 // =====================================================
@@ -89,45 +66,27 @@ const client = new Client({
 });
 
 
-
 // =====================================================
 // SLASH COMMANDS
 // =====================================================
 
 const commands = [
-
-  new SlashCommandBuilder()
-    .setName("ping")
-    .setDescription("Ping command"),
-
-  new SlashCommandBuilder()
-    .setName("website")
-    .setDescription("Website link"),
-
-  new SlashCommandBuilder()
-    .setName("status")
-    .setDescription("Website status"),
-
-  new SlashCommandBuilder()
-    .setName("stats")
-    .setDescription("Database stats")
-
-].map(command => command.toJSON());
-
+  new SlashCommandBuilder().setName("ping").setDescription("Ping bot"),
+  new SlashCommandBuilder().setName("website").setDescription("Website link"),
+  new SlashCommandBuilder().setName("status").setDescription("Website status"),
+  new SlashCommandBuilder().setName("stats").setDescription("DB stats")
+].map(c => c.toJSON());
 
 
 // =====================================================
 // REGISTER COMMANDS
 // =====================================================
 
-const rest = new REST({ version: "10" })
-.setToken(process.env.TOKEN);
+const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
 (async () => {
-
   try {
-
-    console.log("🚀 Registering Slash Commands");
+    console.log("🚀 Registering commands...");
 
     await rest.put(
       Routes.applicationGuildCommands(
@@ -137,14 +96,11 @@ const rest = new REST({ version: "10" })
       { body: commands }
     );
 
-    console.log("✅ Slash Commands Registered");
-
+    console.log("✅ Commands registered");
   } catch (err) {
-    console.log(err);
+    console.log("❌ Command error:", err.message);
   }
-
 })();
-
 
 
 // =====================================================
@@ -156,110 +112,47 @@ client.once("ready", () => {
 });
 
 
-
 // =====================================================
 // INTERACTIONS
 // =====================================================
 
-client.on("interactionCreate", async interaction => {
-
+client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-
-
-  // =====================================================
-  // /ping
-  // =====================================================
-
   if (interaction.commandName === "ping") {
-
     return interaction.reply("🏓 Pong!");
-
   }
-
-
-
-  // =====================================================
-  // /website
-  // =====================================================
 
   if (interaction.commandName === "website") {
-
-    const embed = new EmbedBuilder()
-      .setTitle("🌐 Website")
-      .setDescription(process.env.WEBSITE_URL)
-      .setColor("#5865F2");
-
     return interaction.reply({
-      embeds: [embed]
+      embeds: [
+        new EmbedBuilder()
+          .setTitle("🌐 Website")
+          .setDescription(process.env.WEBSITE_URL)
+          .setColor("Blue")
+      ]
     });
-
   }
-
-
-
-  // =====================================================
-  // /status
-  // =====================================================
 
   if (interaction.commandName === "status") {
-
     try {
-
-      const response = await axios.get(
-        process.env.WEBSITE_URL
-      );
-
-      if (response.status === 200) {
-
-        return interaction.reply(
-          "🟢 Website Online"
-        );
-
-      }
-
+      const res = await axios.get(process.env.WEBSITE_URL);
       return interaction.reply(
-        "🟠 Website Issue"
+        res.status === 200 ? "🟢 Online" : "🟠 Issue"
       );
-
     } catch {
-
-      return interaction.reply(
-        "🔴 Website Offline"
-      );
-
+      return interaction.reply("🔴 Offline");
     }
-
   }
-
-
-
-  // =====================================================
-  // /stats
-  // =====================================================
 
   if (interaction.commandName === "stats") {
+    const count = await mongoose.connection.db
+      .collection("monitors")
+      .countDocuments();
 
-    const count = await Monitor.countDocuments();
-
-    const embed = new EmbedBuilder()
-      .setTitle("📊 Monitoring Stats")
-      .addFields(
-        {
-          name: "Checks Saved",
-          value: `${count}`
-        }
-      )
-      .setColor("#00b894");
-
-    return interaction.reply({
-      embeds: [embed]
-    });
-
+    return interaction.reply(`📊 Logs: ${count}`);
   }
-
 });
-
 
 
 // =====================================================
@@ -267,79 +160,30 @@ client.on("interactionCreate", async interaction => {
 // =====================================================
 
 async function monitorWebsite() {
-
   try {
+    const res = await axios.get(process.env.WEBSITE_URL);
 
-    const response = await axios.get(
-      process.env.WEBSITE_URL
-    );
+    await mongoose.connection.db
+      .collection("monitors")
+      .insertOne({
+        status: res.status === 200 ? "ONLINE" : "ISSUE",
+        checkedAt: new Date()
+      });
 
-    const status =
-      response.status === 200
-      ? "ONLINE"
-      : "ISSUE";
-
-    console.log(`🌐 ${status}`);
-
-    await Monitor.create({
-      status,
-      checkedAt: new Date()
-    });
-
+    console.log("🌐 ONLINE");
   } catch {
+    await mongoose.connection.db
+      .collection("monitors")
+      .insertOne({
+        status: "OFFLINE",
+        checkedAt: new Date()
+      });
 
     console.log("🔴 OFFLINE");
-
-    await Monitor.create({
-      status: "OFFLINE",
-      checkedAt: new Date()
-    });
-
   }
-
 }
 
-
-
-// =====================================================
-// RUN EVERY 5 MINUTES
-// =====================================================
-
 setInterval(monitorWebsite, 300000);
-
-
-
-// =====================================================
-// DASHBOARD API ROUTES
-// =====================================================
-
-// GET ALL MONITOR LOGS
-
-app.get("/api/logs", async (req, res) => {
-
-  const logs = await Monitor
-    .find()
-    .sort({ checkedAt: -1 })
-    .limit(20);
-
-  res.json(logs);
-
-});
-
-
-
-// WEBSITE STATUS
-
-app.get("/api/status", async (req, res) => {
-
-  const latest = await Monitor
-    .findOne()
-    .sort({ checkedAt: -1 });
-
-  res.json(latest);
-
-});
-
 
 
 // =====================================================
@@ -347,97 +191,3 @@ app.get("/api/status", async (req, res) => {
 // =====================================================
 
 client.login(process.env.TOKEN);
-
-
-
-// =====================================================
-// FEATURES INCLUDED
-// =====================================================
-
-// ✅ Slash Commands
-// ✅ MongoDB Database
-// ✅ Dashboard API
-// ✅ Website Monitoring
-// ✅ Monitoring Logs
-// ✅ Discord Bot
-// ✅ Express Backend
-// ✅ Analytics Endpoint
-
-
-
-// =====================================================
-// API ENDPOINTS
-// =====================================================
-
-// GET:
-// http://localhost:3000/api/status
-
-// GET:
-// http://localhost:3000/api/logs
-
-
-
-// =====================================================
-// EXAMPLE FRONTEND DASHBOARD
-// =====================================================
-
-// Create dashboard.html
-
-/*
-<!DOCTYPE html>
-<html>
-
-<head>
-  <title>Dev Dashboard</title>
-</head>
-
-<body>
-
-<h1>Website Monitor</h1>
-
-<div id="status"></div>
-
-<script>
-
-async function loadStatus() {
-
-  const response =
-    await fetch(
-      "http://localhost:3000/api/status"
-    );
-
-  const data = await response.json();
-
-  document.getElementById("status")
-  .innerHTML = `
-    <h2>Status: ${data.status}</h2>
-    <p>${data.checkedAt}</p>
-  `;
-}
-
-loadStatus();
-
-</script>
-
-</body>
-</html>
-*/
-
-
-
-// =====================================================
-// NEXT UPGRADE IDEAS
-// =====================================================
-
-// 🔥 Discord OAuth Login
-// 🔥 Real Dashboard UI
-// 🔥 React Frontend
-// 🔥 Live Charts
-// 🔥 Premium Plans
-// 🔥 AI Assistant
-// 🔥 Ticket System
-// 🔥 VPS Deployment
-// 🔥 Docker
-// 🔥 Redis Cache
-// 🔥 Auto Deploy Hooks
-// 🔥 GitHub Webhooks
