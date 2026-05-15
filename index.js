@@ -151,41 +151,36 @@ client.once("ready", () => {
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  if (interaction.commandName === "ping") {
-    return interaction.reply("🏓 Pong!");
-  }
-
-  if (interaction.commandName === "website") {
-    return interaction.reply(process.env.WEBSITE_URL || "No website set");
-  }
-
   if (interaction.commandName === "status") {
-    try {
-      const res = await axios.get(process.env.WEBSITE_URL);
+  await interaction.deferReply();
 
-      // OPTIONAL DB LOG (SAFE)
-      if (dbConnected) {
-        await Monitor.create({
-          status: res.status === 200 ? "ONLINE" : "ISSUE",
-          checkedAt: new Date()
-        });
-      }
+  try {
+    const res = await axios.get(process.env.WEBSITE_URL, {
+      timeout: 5000
+    });
 
-      return interaction.reply(
-        res.status === 200 ? "🟢 Website Online" : "🟠 Issue"
-      );
-    } catch {
-      if (dbConnected) {
-        await Monitor.create({
-          status: "OFFLINE",
-          checkedAt: new Date()
-        });
-      }
-
-      return interaction.reply("🔴 Website Offline");
+    if (dbConnected) {
+      await Monitor.create({
+        status: res.status === 200 ? "ONLINE" : "ISSUE",
+        checkedAt: new Date()
+      });
     }
+
+    return interaction.editReply(
+      res.status === 200 ? "🟢 Website Online" : "🟠 Issue"
+    );
+
+  } catch (err) {
+    if (dbConnected) {
+      await Monitor.create({
+        status: "OFFLINE",
+        checkedAt: new Date()
+      });
+    }
+
+    return interaction.editReply("🔴 Website Offline");
   }
-});
+}
 
 
 // =====================================================
