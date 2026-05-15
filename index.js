@@ -68,13 +68,19 @@ app.listen(process.env.PORT, () => {
 // MONGODB
 // =====================================================
 
-mongoose.connect(process.env.MONGO_URI)
-.then(() => {
-  console.log("✅ MongoDB Connected");
-})
-.catch(err => {
-  console.log(err);
-});
+async function connectDB() {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 5000
+    });
+
+    console.log("✅ MongoDB Connected");
+  } catch (err) {
+    console.log("❌ MongoDB failed:", err.message);
+  }
+}
+
+connectDB();
 
 
 
