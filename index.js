@@ -20,34 +20,6 @@
 
 
 
-// =====================================================
-// 2. package.json
-// =====================================================
-
-{
-  "name": "advanced-dev-bot",
-  "version": "1.0.0",
-  "type": "module",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  }
-}
-
-
-
-// =====================================================
-// 3. .env
-// =====================================================
-
-TOKEN=YOUR_BOT_TOKEN
-CLIENT_ID=
-GUILD_ID=
-
-MONGO_URI=
-
-WEBSITE_URL=https://k7devs.com
-
 PORT=3000
 
 
