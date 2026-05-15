@@ -7,15 +7,13 @@ import {
   GatewayIntentBits,
   REST,
   Routes,
-  SlashCommandBuilder,
-  EmbedBuilder,
-  PermissionFlagsBits
+  SlashCommandBuilder
 } from "discord.js";
 
 process.on("uncaughtException", console.error);
 process.on("unhandledRejection", console.error);
 
-console.log("🚀 Bot starting...");
+console.log("🚀 BOT STARTING...");
 
 
 // =====================================================
@@ -45,41 +43,35 @@ const client = new Client({
 
 
 // =====================================================
-// SLASH COMMANDS
+// SLASH COMMANDS (KEEP SIMPLE)
 // =====================================================
 
 const commands = [
   new SlashCommandBuilder()
     .setName("ping")
-    .setDescription("Check bot latency"),
+    .setDescription("Check bot"),
 
   new SlashCommandBuilder()
     .setName("website")
-    .setDescription("Show website link"),
+    .setDescription("Show website"),
 
   new SlashCommandBuilder()
     .setName("announce")
-    .setDescription("Send announcement")
-    .addStringOption(option =>
-      option
-        .setName("message")
-        .setDescription("Message to send")
-        .setRequired(true)
-    )
+    .setDescription("Test announce")
 ].map(c => c.toJSON());
 
 
 // =====================================================
-// REGISTER COMMANDS
+// REGISTER COMMANDS (FORCE REFRESH)
 // =====================================================
 
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-(async () => {
+async function register() {
   try {
     console.log("🚀 Registering commands...");
 
-    await rest.put(
+    const data = await rest.put(
       Routes.applicationGuildCommands(
         process.env.CLIENT_ID,
         process.env.GUILD_ID
@@ -87,11 +79,13 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
       { body: commands }
     );
 
-    console.log("✅ Commands ready");
+    console.log("✅ Commands registered:", data.length);
   } catch (err) {
-    console.log("❌ Command error:", err.message);
+    console.log("❌ Command error:", err);
   }
-})();
+}
+
+register();
 
 
 // =====================================================
@@ -104,70 +98,32 @@ client.once("ready", () => {
 
 
 // =====================================================
-// COMMAND HANDLER (100% SAFE)
+// INTERACTIONS (DEBUG SAFE)
 // =====================================================
 
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
+  console.log("👉 COMMAND RECEIVED:", interaction.commandName);
+
   try {
 
-    // ======================
-    // /ping
-    // ======================
     if (interaction.commandName === "ping") {
       return interaction.reply("🏓 Pong!");
     }
 
-    // ======================
-    // /website
-    // ======================
     if (interaction.commandName === "website") {
-      await interaction.deferReply();
-
-      const url = process.env.WEBSITE_URL || "No website set";
-
-      return interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle("🌐 Website")
-            .setDescription(url)
-            .setColor("#5865F2")
-        ]
-      });
+      return interaction.reply("🌐 " + (process.env.WEBSITE_URL || "No website set"));
     }
 
-    // ======================
-    // /announce
-    // ======================
     if (interaction.commandName === "announce") {
-      await interaction.deferReply();
-
-      const msg = interaction.options.getString("message");
-
-      if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
-        return interaction.editReply("❌ You need Administrator permission.");
-      }
-
-      return interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle("📢 Announcement")
-            .setDescription(msg)
-            .setColor("Green")
-            .setTimestamp()
-        ]
-      });
+      return interaction.reply("📢 Announce command works");
     }
+
+    return interaction.reply("❓ Unknown command");
 
   } catch (err) {
-    console.log("Interaction error:", err);
-
-    if (interaction.deferred || interaction.replied) {
-      return interaction.editReply("⚠️ Something went wrong.");
-    } else {
-      return interaction.reply("⚠️ Something went wrong.");
-    }
+    console.log("❌ Interaction error:", err);
   }
 });
 
