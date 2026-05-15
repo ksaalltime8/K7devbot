@@ -2,81 +2,35 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import express from "express";
-import axios from "axios";
-import mongoose from "mongoose";
-
 import {
   Client,
   GatewayIntentBits,
   REST,
   Routes,
   SlashCommandBuilder,
-  EmbedBuilder
+  EmbedBuilder,
+  PermissionFlagsBits
 } from "discord.js";
 
 process.on("uncaughtException", console.error);
 process.on("unhandledRejection", console.error);
 
-console.log("🚀 BOT STARTING...");
+console.log("🚀 Bot starting...");
 
 
 // =====================================================
-// MONGODB (SAFE NON-BLOCKING)
-// =====================================================
-
-let dbConnected = false;
-
-async function connectDB() {
-  try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 5000,
-      maxPoolSize: 10
-    });
-
-    dbConnected = true;
-    console.log("✅ MongoDB Connected");
-  } catch (err) {
-    dbConnected = false;
-    console.log("❌ MongoDB failed (bot still runs):", err.message);
-  }
-}
-
-connectDB();
-
-
-// Simple monitoring schema
-const monitorSchema = new mongoose.Schema({
-  status: String,
-  checkedAt: Date
-});
-
-const Monitor = mongoose.models.Monitor ||
-  mongoose.model("Monitor", monitorSchema);
-
-
-// =====================================================
-// EXPRESS SERVER
+// EXPRESS (KEEP ALIVE DASHBOARD)
 // =====================================================
 
 const app = express();
-app.use(express.json());
-
-const PORT = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
-  res.send("✅ Bot Dashboard Running");
+  res.send("✅ Bot is running");
 });
 
-app.get("/status", (req, res) => {
-  res.json({
-    status: "online",
-    db: dbConnected,
-    bot: client?.user?.tag || "starting"
-  });
-});
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log("🌐 Web server running on port", PORT);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log("🌐 Web server running on", PORT);
 });
 
 
@@ -96,16 +50,23 @@ const client = new Client({
 const commands = [
   new SlashCommandBuilder()
     .setName("ping")
-    .setDescription("Check bot latency"),
+    .setDescription("Check bot"),
 
   new SlashCommandBuilder()
     .setName("website")
-    .setDescription("Show website link"),
+    .setDescription("Show website"),
 
   new SlashCommandBuilder()
-    .setName("status")
-    .setDescription("Check website status")
-].map(cmd => cmd.toJSON());
+    .setName("announce")
+    .setDescription("Send announcement embed")
+    .addStringOption(option =>
+      option
+        .setName("message")
+        .setDescription("Message to send")
+        .setRequired(true)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+].map(c => c.toJSON());
 
 
 // =====================================================
@@ -114,9 +75,9 @@ const commands = [
 
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-async function registerCommands() {
+(async () => {
   try {
-    console.log("🚀 Registering slash commands...");
+    console.log("🚀 Registering commands...");
 
     await rest.put(
       Routes.applicationGuildCommands(
@@ -126,65 +87,62 @@ async function registerCommands() {
       { body: commands }
     );
 
-    console.log("✅ Slash commands registered");
+    console.log("✅ Commands ready");
   } catch (err) {
     console.log("❌ Command error:", err.message);
   }
-}
-
-registerCommands();
+})();
 
 
 // =====================================================
-// READY EVENT
+// READY
 // =====================================================
 
 client.once("ready", () => {
-  console.log("✅ Logged in as:", client.user.tag);
+  console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
 
 // =====================================================
-// INTERACTIONS
+// COMMAND HANDLER
 // =====================================================
 
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  if (interaction.commandName === "status") {
-  await interaction.deferReply();
-
-  try {
-    const res = await axios.get(process.env.WEBSITE_URL, {
-      timeout: 5000
-    });
-
-    if (dbConnected) {
-      await Monitor.create({
-        status: res.status === 200 ? "ONLINE" : "ISSUE",
-        checkedAt: new Date()
-      });
-    }
-
-    return interaction.editReply(
-      res.status === 200 ? "🟢 Website Online" : "🟠 Issue"
-    );
-
-  } catch (err) {
-    if (dbConnected) {
-      await Monitor.create({
-        status: "OFFLINE",
-        checkedAt: new Date()
-      });
-    }
-
-    return interaction.editReply("🔴 Website Offline");
+  // /ping
+  if (interaction.commandName === "ping") {
+    return interaction.reply("🏓 Pong!");
   }
-}
+
+  // /website
+  if (interaction.commandName === "website") {
+    const embed = new EmbedBuilder()
+      .setTitle("🌐 My Website")
+      .setDescription(process.env.WEBSITE_URL)
+      .setColor("#5865F2")
+      .setFooter({ text: "Powered by Discord Bot" });
+
+    return interaction.reply({ embeds: [embed] });
+  }
+
+  // /announce
+  if (interaction.commandName === "announce") {
+    const msg = interaction.options.getString("message");
+
+    const embed = new EmbedBuilder()
+      .setTitle("📢 Announcement")
+      .setDescription(msg)
+      .setColor("Green")
+      .setTimestamp();
+
+    return interaction.reply({ embeds: [embed] });
+  }
+});
 
 
 // =====================================================
-// LOGIN (LAST STEP)
+// LOGIN
 // =====================================================
 
 client.login(process.env.TOKEN);
