@@ -51,14 +51,25 @@ const commands = [
     .setName("ping")
     .setDescription("Check bot"),
 
-  new SlashCommandBuilder()
-    .setName("website")
-    .setDescription("Show website"),
+new SlashCommandBuilder()
+  .setName("website")
+  .setDescription("Show website with a custom message")
+  .addStringOption(option =>
+    option
+      .setName("message")
+      .setDescription("Custom message to display with the website link")
+      .setRequired(false)
+  ),
 
-  new SlashCommandBuilder()
-    .setName("announce")
-    .setDescription("Test announce")
-].map(c => c.toJSON());
+new SlashCommandBuilder()
+  .setName("announce")
+  .setDescription("Send announcement")
+  .addStringOption(option =>
+    option
+      .setName("message")
+      .setDescription("The message to send in the announcement")
+      .setRequired(true)
+  )
 
 
 // =====================================================
